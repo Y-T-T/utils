@@ -1,0 +1,50 @@
+#!/bin/bash
+
+# --- Functionality: Securely shreds all files within a specified directory and then deletes the directory structure.
+# --- Usage: ./shred-dir <TARGET_FOLDER_PATH>
+
+# 1. Check if a target folder was provided as an argument.
+if [ -z "$1" ]; then
+    echo "ERROR: Please specify a target folder to securely delete."
+    echo "Usage: $0 <folder_path>"
+    exit 1
+fi
+
+TARGET_FOLDER="$1"
+
+# 2. Check if the specified folder exists.
+if [ ! -d "$TARGET_FOLDER" ]; then
+    echo "ERROR: The specified folder '$TARGET_FOLDER' does not exist."
+    exit 2
+fi
+
+# 3. Confirmation Prompt (Crucial for preventing accidental data loss)
+echo "WARNING: This operation will overwrite the data in '$TARGET_FOLDER' and ALL its contents multiple times."
+echo "         The data will be irrecoverable!"
+read -r -p "Are you sure you want to proceed? (Type yes or y to confirm): " confirmation
+
+if [ "$confirmation" != "yes" ] && [ "$confirmation" != "y" ]; then
+    echo "Operation cancelled."
+    exit 0
+fi
+
+echo "--- Starting secure file overwrite within '$TARGET_FOLDER'... ---"
+
+# 4. Find all files and securely shred them.
+# find "$TARGET_FOLDER" -type f: Recursively finds all entries that are files (-type f).
+# -exec shred -u -v -z {}: Executes the shred command on each file found:
+#   -u: Deallocates and removes the file after overwriting.
+#   -v: Displays detailed progress (verbose).
+#   -z: Performs a final overwrite with zeros to hide shredding traces.
+find "$TARGET_FOLDER" -type f -exec shred -u -z {} \;
+
+# 5. Delete the now-empty directory structure.
+echo "--- Deleting the empty directory structure... ---"
+# rm -r: Recursively deletes the directory (and any now-empty subdirectories).
+rm -r "$TARGET_FOLDER"
+
+if [ $? -eq 0 ]; then
+    echo "✅ Folder '$TARGET_FOLDER' has been securely deleted."
+else
+    echo "❌ WARNING: Files were overwritten, but an error occurred while removing the folder structure."
+fi
