@@ -51,7 +51,7 @@ PowerShell scripts for Windows system administration.
 
 1.  Clone this repository:
     ```bash
-    git clone [https://github.com/Y-T-T/utils.git](https://github.com/Y-T-T/utils.git)
+    git clone https://github.com/Y-T-T/utils.git
     cd utils
     ```
 
