@@ -1,4 +1,15 @@
-
+# Byte-compiled / optimized / DLL files
+__pycache__/
 .vscode/
+
+# Distribution / packaging / environment files
 .DS_Store
+.python-version
+.tool-versions
+.env
+
+# test files
 **/test/**
+*.log
+payload.txt
+python/**/*.ps1

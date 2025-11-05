@@ -6,35 +6,35 @@ A collection of utility scripts, primarily for automation, system administration
 
 ## Structure
 
-This repository is organized by technology/language:
+This repository is organized by languages/categories:
 
-<!-- * `/python`: Cross-platform Python scripts (automation, data processing). -->
+* `/python`: Cross-platform Python scripts.
 * `/shell`: Bash/Zsh scripts for Linux / macOS environments.
 <!-- * `/powershell`: PowerShell scripts for Windows environments. -->
 
 ---
 
-<!-- ## 🐍 Python Scripts (`/python`)
+## 🐍 Python Scripts (`/python`)
 
-Cross-platform scripts for various tasks.
+Cross-platform scripts for automation, security, and various tasks.
 
-* **Dependencies:** `pip install -r python/requirements.txt`
+**Featured Scripts:**
+- **`ps1_reversed_shell.py`** - Generates PowerShell reverse shell payloads
+- **`ps1_encoder.py`** - Encodes/decodes PowerShell scripts to Base64
 
-| Script | Description | Usage |
-| :--- | :--- | :--- |
-| `data_processor.py` | (Example) Cleans or transforms CSV data. | `python python/data_processor.py <input> <output>` |
-| `check_ssl.py` | (Example) Checks the SSL certificate expiry date for a domain. | `python python/check_ssl.py example.com` |
-| | | | -->
+📄 **[View all Python scripts →](python/README.md)**
+
+---
 
 ## 🐧 Shell Scripts (`/shell`)
 
 Shell scripts primarily intended for Linux / macOS environments.
 
-| Script | Description | Usage |
-| :--- | :--- | :--- |
-| `shred-dir.sh` | **Securely and recursively deletes** a directory and all its contents, addressing the limitation of the standard `shred` utility. | `sudo ./shell/shred-dir.sh /path/to/directory` |
-<!-- | `setup_env.sh` | (Example) Sets up a new Linux development environment automatically. | `./shell/setup_env.sh` | -->
-| | | |
+**Featured Scripts:**
+- **`shred-dir`** - Securely and recursively deletes directories with multi-pass overwriting
+- **`pyenv_install_python_with_tkinter.sh`** - Installs Python via pyenv with tkinter support
+
+📄 **[View all Shell scripts →](shell/README.md)**
 
 <!-- ## 🪟 PowerShell Scripts (`/powershell`)
 
