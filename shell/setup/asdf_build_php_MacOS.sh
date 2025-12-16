@@ -5,6 +5,13 @@ PHP_VERSION=${1:-"latest"}
 
 echo "Preparing the build environment for PHP $PHP_VERSION..."
 
+# Check if Homebrew is installed
+if ! command -v brew &> /dev/null; then
+    echo "Error: Homebrew ('brew') not found." >&2
+    echo "Please install Homebrew first." >&2
+    exit 1
+fi
+
 # Install necessary dependencies
 # Includes build tools (autoconf, bison...) and common libraries (openssl, libxml2, oniguruma...)
 echo "Installing/updating Homebrew packages..."
