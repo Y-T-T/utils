@@ -31,6 +31,7 @@ brew install \
     libiconv \
     libjpeg \
     libpng \
+    libsodium \
     libxml2 \
     libzip \
     pkg-config \
@@ -57,6 +58,7 @@ LIBEDIT_PATH=$(brew --prefix libedit)
 LIBICONV_PATH=$(brew --prefix libiconv)
 LIBJPEG_PATH=$(brew --prefix libjpeg)
 LIBPNG_PATH=$(brew --prefix libpng)
+LIBSODIUM_PATH=$(brew --prefix libsodium)
 LIBXML2_PATH=$(brew --prefix libxml2)
 LIBZIP_PATH=$(brew --prefix libzip)
 RE2C_PATH=$(brew --prefix re2c)
@@ -84,7 +86,6 @@ export PHP_WITHOUT_PEAR=yes
 echo "PHP_WITHOUT_PEAR set to: $PHP_WITHOUT_PEAR"
 
 # Locate the asdf PHP plugin install script and modify it to use OpenSSL 3
-# Check out a specific commit known to work well cause current master have some issues
 ASDF_PHP_PLUGIN_DIR="$HOME/.asdf/plugins/php"
 if [ ! -d "$ASDF_PHP_PLUGIN_DIR" ]; then
     echo "Error: asdf PHP plugin not found at $ASDF_PHP_PLUGIN_DIR" >&2
@@ -92,7 +93,9 @@ if [ ! -d "$ASDF_PHP_PLUGIN_DIR" ]; then
     exit 1
 fi
 
-(cd "$ASDF_PHP_PLUGIN_DIR" && git checkout 09203d1) # Comment out when the plugin is fixed
+# Check out a specific commit known to work well cause latest master have some issues
+echo "Changing to a stable commit of the asdf PHP plugin..."
+(cd "$ASDF_PHP_PLUGIN_DIR" && git checkout 09203d1) # Comment out when the latest plugin is fixed
 PLUGIN_INSTALL_SCRIPT="$ASDF_PHP_PLUGIN_DIR/bin/install"
 
 echo "Check and correct the asdf PHP plugin install script..."
