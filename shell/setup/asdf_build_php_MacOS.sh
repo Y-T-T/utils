@@ -109,7 +109,7 @@ fi
 echo "Starting to compile and install PHP $PHP_VERSION (this may take a few minutes)..."
 
 # Remove old failed installation (if any)
-asdf uninstall php $PHP_VERSION > /dev/null 2>&1
+asdf uninstall php $PHP_VERSION > /dev/null 2>&1 || true
 
 # Start installation
 asdf install php $PHP_VERSION
