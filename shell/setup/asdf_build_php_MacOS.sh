@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -euo pipefail
+
 # Define the PHP version to install
 PHP_VERSION=${1:-"latest"}
 
@@ -94,6 +96,7 @@ if [ -f "$PLUGIN_INSTALL_SCRIPT" ]; then
     echo "Modified the asdf PHP plugin install script to use OpenSSL 3."
 else
     echo "Error: asdf PHP plugin install script not found at $PLUGIN_INSTALL_SCRIPT" >&2
+    echo "Please install the asdf PHP plugin first. (asdf plugin add php https://github.com/asdf-community/asdf-php.git)" >&2
     exit 1
 fi
 
