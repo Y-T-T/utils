@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Define the PHP version to install
-PHP_VERSION=${1:-"8.4.0"}
+PHP_VERSION=${1:-"latest"}
 
 echo "Preparing the build environment for PHP $PHP_VERSION..."
 
