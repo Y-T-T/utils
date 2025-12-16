@@ -1,6 +1,6 @@
 # Utils Toolbox
 
-A collection of utility scripts, primarily for automation, system administration, and security tasks.
+A collection of utility scripts, primarily for automation or security tasks.
 
 ---
 
@@ -10,40 +10,6 @@ This repository is organized by languages/categories:
 
 * `/python`: Cross-platform Python scripts.
 * `/shell`: Bash/Zsh scripts for Linux / macOS environments.
-<!-- * `/powershell`: PowerShell scripts for Windows environments. -->
-
----
-
-## 🐍 Python Scripts (`/python`)
-
-Cross-platform scripts for automation, security, and various tasks.
-
-**Featured Scripts:**
-- **`ps1_reversed_shell.py`** - Generates PowerShell reverse shell payloads
-- **`ps1_encoder.py`** - Encodes/decodes PowerShell scripts to Base64
-
-📄 **[View all Python scripts →](python/README.md)**
-
----
-
-## 🐧 Shell Scripts (`/shell`)
-
-Shell scripts primarily intended for Linux / macOS environments.
-
-**Featured Scripts:**
-- **`shred-dir`** - Securely and recursively deletes directories with multi-pass overwriting
-- **`pyenv_install_python_with_tkinter.sh`** - Installs Python via pyenv with tkinter support
-
-📄 **[View all Shell scripts →](shell/README.md)**
-
-<!-- ## 🪟 PowerShell Scripts (`/powershell`)
-
-PowerShell scripts for Windows system administration.
-
-| Script | Description | Usage |
-| :--- | :--- | :--- |
-| `clear_cache.ps1` | (Example) Clears various system caches on Windows. | `Powershell.exe -ExecutionPolicy Bypass -File .powershellclear_cache.ps1` |
-| | | | -->
 
 ---
 

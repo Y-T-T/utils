@@ -86,6 +86,12 @@ echo "PHP_WITHOUT_PEAR set to: $PHP_WITHOUT_PEAR"
 # Locate the asdf PHP plugin install script and modify it to use OpenSSL 3
 # Check out a specific commit known to work well cause current master have some issues
 ASDF_PHP_PLUGIN_DIR="$HOME/.asdf/plugins/php"
+if [ ! -d "$ASDF_PHP_PLUGIN_DIR" ]; then
+    echo "Error: asdf PHP plugin not found at $ASDF_PHP_PLUGIN_DIR" >&2
+    echo "Please install the asdf PHP plugin first. (asdf plugin add php https://github.com/asdf-community/asdf-php.git)" >&2
+    exit 1
+fi
+
 (cd "$ASDF_PHP_PLUGIN_DIR" && git checkout 09203d1) # Comment out when the plugin is fixed
 PLUGIN_INSTALL_SCRIPT="$ASDF_PHP_PLUGIN_DIR/bin/install"
 
@@ -96,7 +102,6 @@ if [ -f "$PLUGIN_INSTALL_SCRIPT" ]; then
     echo "Modified the asdf PHP plugin install script to use OpenSSL 3."
 else
     echo "Error: asdf PHP plugin install script not found at $PLUGIN_INSTALL_SCRIPT" >&2
-    echo "Please install the asdf PHP plugin first. (asdf plugin add php https://github.com/asdf-community/asdf-php.git)" >&2
     exit 1
 fi
 
