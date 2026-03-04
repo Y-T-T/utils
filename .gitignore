@@ -13,3 +13,4 @@ __pycache__/
 *.log
 payload.txt
 python/**/*.ps1
+osv_offline_db
