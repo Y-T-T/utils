@@ -1,19 +1,51 @@
 import os
 import urllib.request
 import urllib.parse
+import hashlib
 
-def get_remote_etag(url):
+def get_remote_hash(url):
     """
-    Sends an HTTP HEAD request to fetch the ETag (hash) of the remote file 
-    without downloading the actual file content.
+    Sends a HEAD request to fetch the remote file's MD5 hash from the 
+    'x-goog-hash' header. Google Cloud Storage returns this as Base64.
     """
     try:
         req = urllib.request.Request(url, method='HEAD')
         with urllib.request.urlopen(req) as response:
-            return response.headers.get('ETag')
+            x_goog_hash = response.headers.get('x-goog-hash')
+            if x_goog_hash:
+                # The header format is usually: "crc32c=..., md5=..."
+                parts = x_goog_hash.split(',')
+                for part in parts:
+                    part = part.strip()
+                    if part.startswith('md5='):
+                        return "md5", part[4:] # Return the Base64 MD5 string
+                    
+            etag = response.headers.get('ETag')
+            if etag:
+                return "etag", etag.strip('"') # Remove quotes from ETag if present
     except Exception as e:
         print(f"Error fetching headers for {url}: {e}")
+    return None
+
+def get_local_md5(file_path, format="hex"):
+    """
+    Calculates the MD5 hash of a local file and returns it as a Base64 string
+    to match the format provided by Google Cloud Storage.
+    """
+    if not os.path.exists(file_path):
         return None
+        
+    hash_md5 = hashlib.md5()
+    with open(file_path, "rb") as f:
+        # Read the file in chunks to avoid memory issues with large files
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_md5.update(chunk)
+            
+    if format == "base64":
+        import base64
+        return base64.b64encode(hash_md5.digest()).decode('utf-8')
+    
+    return hash_md5.hexdigest()
 
 def download_osv_offline_database():
     """
@@ -53,24 +85,18 @@ def download_osv_offline_database():
         eco_encoded = urllib.parse.quote(eco)
         zip_url = f"{base_url}/{eco_encoded}/all.zip"
         eco_dir = os.path.join(cache_dir, eco)
-        
-        if not os.path.exists(eco_dir):
-            os.makedirs(eco_dir)
+        os.makedirs(eco_dir, exist_ok=True)
             
         dest_file = os.path.join(eco_dir, "all.zip")
-        etag_file = os.path.join(eco_dir, "all.zip.etag")
         
-        # Get the remote hash (ETag) via HEAD request
-        remote_etag = get_remote_etag(zip_url)
-        
-        # Check the local hash (ETag) if the zip file exists
-        local_etag = None
-        if os.path.exists(dest_file) and os.path.exists(etag_file):
-            with open(etag_file, 'r') as f:
-                local_etag = f.read().strip()
+        # Get remote & local MD5 hash
+        hash_type, remote_md5 = get_remote_hash(zip_url)
+        local_md5 = get_local_md5(dest_file, format="base64" if hash_type == "md5" else "hex")
+
+        print(f"remote_md5: {remote_md5}, local_md5: {local_md5} for {eco}")
 
         # Compare hashes
-        if remote_etag and local_etag == remote_etag:
+        if remote_md5 and local_md5 == remote_md5:
             print(f"[SKIP] {eco} is up-to-date.")
             skipped_count += 1
             continue
@@ -80,11 +106,6 @@ def download_osv_offline_database():
         try:
             # Download the file if hashes don't match or file is missing
             urllib.request.urlretrieve(zip_url, dest_file)
-            
-            # Save the new hash to the local etag file
-            if remote_etag:
-                with open(etag_file, 'w') as f:
-                    f.write(remote_etag)
             downloaded_count += 1
             
         except Exception as e:
