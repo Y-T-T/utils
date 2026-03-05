@@ -7,6 +7,7 @@ def get_remote_hash(url):
     """
     Sends a HEAD request to fetch the remote file's MD5 hash from the 
     'x-goog-hash' header. Google Cloud Storage returns this as Base64.
+    If the 'x-goog-hash' header is not available, it falls back to using the ETag header.
     """
     try:
         req = urllib.request.Request(url, method='HEAD')
