@@ -211,6 +211,9 @@ def convert_osv_report(input_path):
         # If there's no head tag, insert the style at the beginning
         new_content = light_mode_style + html_content
 
+    # Replace logo image reference
+    new_content = new_content.replace("osv-scanner-OSV-logo-darkmode.png", "osv-scanner-OSV-logo-lightmode.png")
+
     with open(output_path, 'w', encoding='utf-8') as f:
         f.write(new_content)
 
