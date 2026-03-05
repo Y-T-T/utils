@@ -94,8 +94,6 @@ def download_osv_offline_database():
         hash_type, remote_md5 = get_remote_hash(zip_url)
         local_md5 = get_local_md5(dest_file, format="base64" if hash_type == "md5" else "hex")
 
-        print(f"remote_md5: {remote_md5}, local_md5: {local_md5} for {eco}")
-
         # Compare hashes
         if remote_md5 and local_md5 == remote_md5:
             print(f"[SKIP] {eco} is up-to-date.")
