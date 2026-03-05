@@ -64,7 +64,8 @@ def download_osv_offline_database():
         
     base_url = "https://storage.googleapis.com/osv-vulnerabilities"
     ecosystems_url = f"{base_url}/ecosystems.txt"
-    
+    cache_dir = os.path.join(cache_dir, "osv-scanner") # The expected structure is <cache_dir>/osv-scanner/<ecosystem>/all.zip
+
     print(f"Target Cache Directory: {cache_dir}")
     print("Checking for updates...\n")
     
