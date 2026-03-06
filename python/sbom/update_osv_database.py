@@ -54,7 +54,7 @@ def download_osv_offline_database():
     Downloads OSV databases directly into the OSV_SCANNER_LOCAL_DB_CACHE_DIRECTORY
     maintaining the exact directory structure required by OSV-Scanner.
     """
-    # 1. Get the cache directory from environment variables
+    # Get the cache directory from environment variables
     cache_dir = os.environ.get("OSV_SCANNER_LOCAL_DB_CACHE_DIRECTORY")
     
     if not cache_dir:
