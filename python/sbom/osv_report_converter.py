@@ -281,6 +281,15 @@ def convert_osv_report(input_path, sbom_dir=None):
             ]
 
             vuln_tab = soup.find(id="vuln-tab")
+            if not vuln_tab:
+                new_vuln_tab = soup.new_tag("div", id="vuln-tab", attrs={"class": "view-tab"})
+                global_tab = soup.find(id="summary-tab")
+                if global_tab:
+                    global_tab.append(new_vuln_tab)
+                elif soup.body:
+                    soup.body.append(new_vuln_tab)
+                vuln_tab = new_vuln_tab
+
             if vuln_tab:
                 passed_container = None
                 sources_wrapper = None
