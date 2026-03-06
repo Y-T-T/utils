@@ -2,6 +2,7 @@
 Converts OSV HTML reports (Default dark mode) to a light mode version and generates a PDF.
 """
 
+import os
 import asyncio
 import argparse
 from datetime import datetime
@@ -41,6 +42,28 @@ async def html_to_pdf(html_path, pdf_path):
             margin={"top": "1cm", "bottom": "1cm", "left": "1cm", "right": "1cm"}
         )
         await browser.close()
+
+def get_osv_db_mtime():
+    """
+    Retrieves the latest modification time of the OSV offline database by checking all "all.zip" files.
+    """
+    # Get the cache directory from environment variables
+    cache_dir = os.environ.get("OSV_SCANNER_LOCAL_DB_CACHE_DIRECTORY")
+    if not cache_dir:
+        return None
+    
+    cache_path = Path(cache_dir)
+    # Check if the cache directory exists
+    zip_files = list(cache_path.rglob("all.zip"))
+    
+    if not zip_files:
+        return None
+        
+    # Find the latest modification time among all files
+    latest_mtime = max(f.stat().st_mtime for f in zip_files)
+    
+    # Format the timestamp into a human-readable format
+    return datetime.fromtimestamp(latest_mtime).strftime("%Y-%m-%d %H:%M")
 
 def convert_osv_report(input_path, sbom_dir=None):
     input_path = Path(input_path) # Convert input_path to a Path object
@@ -224,13 +247,13 @@ def convert_osv_report(input_path, sbom_dir=None):
         header_right.clear() # Clear existing feedback link instead of decomposing
         
         # Get current execution time
-        sync_time = datetime.now().strftime("%Y-%m-%d %H:%M")
+        sync_time = get_osv_db_mtime() + " (UTC+8)" or "Unknown (Offline)"
         
         # Create a professional timestamp element
         timestamp_tag = soup.new_tag("div", attrs={
             "style": "text-align: right; font-size: 10pt; color: #5f6368; font-weight: 400;"
         })
-        timestamp_tag.string = f"OSV Database Last Updated: {sync_time} (UTC+8)"
+        timestamp_tag.string = f"OSV Database Last Updated: {sync_time}"
         header_right.append(timestamp_tag)
     
     # Remove search box, and filter section for cleaner PDF output
@@ -307,9 +330,11 @@ def convert_osv_report(input_path, sbom_dir=None):
     # Save the modified content to a new file
     dir_name = input_path.parent
     base_name = input_path.name
+    p = Path(input_path)
+    prefix = p.parent.name if p.parent.name else p.stem
     html_output = dir_name / f"light_{base_name}"
     tmp_output = dir_name / f"tmp_{base_name}"
-    pdf_output = dir_name / f"{dir_name}_SBOM_Report_{datetime.now().strftime("%m%d")}.pdf"
+    pdf_output = dir_name / f"{prefix}_SBOM_Report_{datetime.now().strftime("%m%d")}.pdf"
     
     print(f"[*] Saving modified HTML report to: {html_output}")
     with open(html_output, 'w', encoding='utf-8') as f:
