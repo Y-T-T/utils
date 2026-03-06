@@ -27,7 +27,7 @@ def get_remote_hash(url):
                 return "etag", etag.strip('"') # Remove quotes from ETag if present
     except Exception as e:
         print(f"Error fetching headers for {url}: {e}")
-    return None
+    return None, None
 
 def get_local_md5(file_path, format="hex"):
     """
@@ -58,10 +58,14 @@ def download_osv_offline_database():
     cache_dir = os.environ.get("OSV_SCANNER_LOCAL_DB_CACHE_DIRECTORY")
     
     if not cache_dir:
-        print("Warning: OSV_SCANNER_LOCAL_DB_CACHE_DIRECTORY environment variable is not set.")
-        print("Defaulting to './osv_offline_db'.")
-        print("Please ensure you export this same path before running osv-scanner.")
-        cache_dir = Path("./osv_offline_db") # Convert to Path object
+        print("""Error: OSV_SCANNER_LOCAL_DB_CACHE_DIRECTORY environment variable is not set.
+              Please set it to the desired cache directory path and run the script again.
+                Example:
+                In Windows PowerShell:
+                  $env:OSV_SCANNER_LOCAL_DB_CACHE_DIRECTORY = \"$HOME\\.osv_offine_db\"
+                In Linux/macOS:
+                  export OSV_SCANNER_LOCAL_DB_CACHE_DIRECTORY=\"$HOME/.osv_offine_db\"""")
+        return
     else:
         cache_dir = Path(cache_dir) # Convert to Path object
         
@@ -93,8 +97,15 @@ def download_osv_offline_database():
         eco_dir.mkdir(parents=True, exist_ok=True)
             
         dest_file = eco_dir / "all.zip"
-        print(f"[SKIP] {eco} is up-to-date.")
-        skipped_count += 1
+        
+        hash_type, remote_hash = get_remote_hash(zip_url)
+
+        local_hash = get_local_md5(dest_file, format="base64" if hash_type == "md5" else "hex")
+
+        if remote_hash and local_hash and remote_hash == local_hash:
+            print(f"[SKIP] {eco} is up-to-date.")
+            skipped_count += 1
+            continue
             
         print(f"[DOWNLOADING] {eco} -> {dest_file}")
         
