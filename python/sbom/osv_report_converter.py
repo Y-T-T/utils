@@ -128,7 +128,8 @@ def convert_osv_report(input_path, sbom_dir=None):
         .critical { background-color: #ad0300 !important; color: #ffffff !important; }
         .high { background-color: #ffa500 !important; color: #ffffff !important; }
         .medium { background-color: #ffd700 !important; color: #292929 !important; }
-        .low { background-color: #53aa33 !important; color: #ffffff !important; }
+        .low { background-color: #53aa33 !important; color: #292929 !important; }
+        .unknown { background-color: #80868d !important; color: #ffffff !important; }
 
         .package-details {
             background: #fdfdfd !important;
