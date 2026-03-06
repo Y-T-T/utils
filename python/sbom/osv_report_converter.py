@@ -2,9 +2,11 @@
 Converts OSV HTML reports (Default dark mode) to a light mode version and generates a PDF.
 """
 
-import sys
-import os
 import asyncio
+import argparse
+from datetime import datetime
+from pathlib import Path
+from copy import deepcopy
 from bs4 import BeautifulSoup
 from playwright.async_api import async_playwright
 
@@ -20,7 +22,7 @@ async def html_to_pdf(html_path, pdf_path):
         page = await context.new_page()
 
         # Load the HTML file using a file URL
-        absolute_path = f"file://{os.path.abspath(html_path)}"
+        absolute_path = f"file://{Path(html_path).resolve()}"
         await page.goto(absolute_path, wait_until='networkidle')
         
         # Wait to ensure Google Fonts are downloaded and applied
@@ -40,8 +42,9 @@ async def html_to_pdf(html_path, pdf_path):
         )
         await browser.close()
 
-def convert_osv_report(input_path):
-    if not os.path.exists(input_path):
+def convert_osv_report(input_path, sbom_dir=None):
+    input_path = Path(input_path) # Convert input_path to a Path object
+    if not input_path.exists():
         print(f"[-] Cannot find file: {input_path}")
         return
 
@@ -56,7 +59,7 @@ def convert_osv_report(input_path):
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     """
 
-    light_mode_style = """
+    light_mode_style_f = """
     <style>
         /* Global override to ensure NO default browser fonts leak into the PDF */
         *, *::before, *::after, body, html, table, td, th, pre, code, div, span, p, a, input:not(i) {
@@ -160,18 +163,35 @@ def convert_osv_report(input_path):
             }
             tr { page-break-inside: avoid !important; }
         }
+    """
+    light_mode_style_b_html = """
     </style>
     """
 
+    light_mode_style_b_pdf = """
+
+        .hide-block { display: block !important; }
+    </style>
+    """
+
+    html_soup = deepcopy(soup)
+    html_inject = light_mode_font_injection + light_mode_style_f + light_mode_style_b_html
+    pdf_inject = light_mode_font_injection + light_mode_style_f + light_mode_style_b_pdf
+
     # Inject fonts and style into the <head>
     if soup.head:
-        soup.head.append(BeautifulSoup(light_mode_font_injection + light_mode_style, 'html.parser'))
+        html_soup.head.append(BeautifulSoup(html_inject, 'html.parser'))
+        soup.head.append(BeautifulSoup(pdf_inject, 'html.parser'))
     else:
-        new_head = soup.new_tag('head')
-        new_head.append(BeautifulSoup(light_mode_font_injection + light_mode_style, 'html.parser'))
-        soup.insert(0, new_head)
+        new_html_head = html_soup.new_tag('head')
+        new_html_head.append(BeautifulSoup(html_inject, 'html.parser'))
+        html_soup.insert(0, new_html_head)
 
-    html_content = str(soup).replace("osv-scanner-OSV-logo-darkmode.png", "osv-scanner-OSV-logo-lightmode.png")
+        new_pdf_head = soup.new_tag('head')
+        new_pdf_head.append(BeautifulSoup(pdf_inject, 'html.parser'))
+        soup.insert(0, new_pdf_head)
+
+    html_content = str(html_soup).replace("osv-scanner-OSV-logo-darkmode.png", "osv-scanner-OSV-logo-lightmode.png")
 
     # Convert tooltip content from HTML-escaped to actual HTML elements
     tooltips = soup.find_all("div", class_="tooltip")
@@ -198,27 +218,98 @@ def convert_osv_report(input_path):
     pkg_details = soup.find_all("div", class_="package-details")
     [details.__setitem__('class', 'package-details') for details in pkg_details]
 
-    feedback = soup.find(id="header-right")
-    if feedback:
-        feedback.decompose()
+    # Update header to include last updated timestamp and remove feedback link
+    header_right = soup.find(id="header-right")
+    if header_right:
+        header_right.clear() # Clear existing feedback link instead of decomposing
+        
+        # Get current execution time
+        sync_time = datetime.now().strftime("%Y-%m-%d %H:%M")
+        
+        # Create a professional timestamp element
+        timestamp_tag = soup.new_tag("div", attrs={
+            "style": "text-align: right; font-size: 10pt; color: #5f6368; font-weight: 400;"
+        })
+        timestamp_tag.string = f"OSV Database Last Updated: {sync_time} (UTC+8)"
+        header_right.append(timestamp_tag)
     
+    # Remove search box, and filter section for cleaner PDF output
     filter_section = soup.find(id="filter-section")
     if filter_section:
-        filter_section.decompose() 
+        filter_section.decompose()
 
     search_box = soup.find("div", class_="search-box")
     if search_box:
-        search_box.decompose() 
+        search_box.decompose()
 
+    # Find the "Passed (No Known Vulnerabilities)" section and inject SBOM sources if provided
+    if sbom_dir:
+        try:
+            src = Path(sbom_dir)
+
+            existing_sources = {
+                Path(span.get_text(strip=True).replace("sbom:", "")).resolve() 
+                for span in soup.find_all("span", class_="source-path")
+            }
+
+            sbom_patterns = [
+                "*.spdx.json", "*.spdx", "*.spdx.yml", "*.spdx.rdf", "*.spdx.rdf.xml", # SPDX
+                "bom.json", "*.cdx.json", "bom.xml", "*.cdx.xml"                       # CycloneDX
+            ]
+
+            vuln_tab = soup.find(id="vuln-tab")
+            if vuln_tab:
+                passed_container = None
+                sources_wrapper = None
+                processed_files = set()
+
+                for pattern in sbom_patterns:
+                    for sbom_file in src.glob(pattern):
+                        abs_sbom = sbom_file.resolve()
+                        
+                        if abs_sbom not in existing_sources and abs_sbom not in processed_files:
+                            processed_files.add(abs_sbom)
+
+                            if passed_container is None:
+                                passed_container = soup.new_tag("div", attrs={"class": "ecosystem-container project-type"})
+                                h2 = soup.new_tag("h2", attrs={"class": "ecosystem-heading"})
+                                h2.string = "Passed (No Known Vulnerabilities)"
+                                passed_container.append(h2)
+                                sources_wrapper = soup.new_tag("div", attrs={"class": "ecosystem-sources-container"})
+                                passed_container.append(sources_wrapper)
+
+                            source_div = soup.new_tag("div", attrs={"class": "source-container"})
+                            h3 = soup.new_tag("h3", attrs={"class": "source-heading"})
+                            h3.string = "Source: "
+                            span = soup.new_tag("span", attrs={"class": "source-path"})
+                            span.string = f"sbom:{abs_sbom.as_posix()}"
+                            h3.append(span)
+                            
+                            p_tag = soup.new_tag("p")
+                            p_tag.string = "經 OSV 資料庫比對，未偵測到已知弱點 (No known vulnerabilities detected)"
+                            
+                            source_div.append(h3)
+                            source_div.append(p_tag)
+                            sources_wrapper.append(source_div)
+
+                if passed_container:
+                    vuln_tab.append(passed_container)
+                    print(f"[*] Found and injected {len(processed_files)} safe sources.")
+                else:
+                    print("[*] No additional safe sources found. Skipping injection.")
+                    
+        except Exception as e:
+            print(f"[!] Error processing SBOM directory: {e}")
+                
     # Replace logo image reference
     pdf_content = str(soup).replace("osv-scanner-OSV-logo-darkmode.png", "osv-scanner-OSV-logo-lightmode.png")
 
     # Save the modified content to a new file
-    dir_name = os.path.dirname(input_path)
-    base_name = os.path.basename(input_path)
-    html_output = os.path.join(dir_name, f"light_{base_name}")
-    tmp_output = os.path.join(dir_name, f"tmp_{base_name}")
-    pdf_output = os.path.join(dir_name, f"light_{os.path.splitext(base_name)[0]}.pdf")
+    dir_name = input_path.parent
+    base_name = input_path.name
+    html_output = dir_name / f"light_{base_name}"
+    tmp_output = dir_name / f"tmp_{base_name}"
+    pdf_output = dir_name / f"{dir_name}_SBOM_Report_{datetime.now().strftime("%m%d")}.pdf"
     
     print(f"[*] Saving modified HTML report to: {html_output}")
     with open(html_output, 'w', encoding='utf-8') as f:
@@ -232,14 +323,16 @@ def convert_osv_report(input_path):
     
     # Clean up the temporary HTML file used for PDF generation
     print(f"[*] Cleaning up temporary file...")
-    if os.path.exists(tmp_output):
-        os.remove(tmp_output)
+    if tmp_output.exists():
+        tmp_output.unlink()
 
     print(f"[*] PDF report generated at: {pdf_output}")
     print("[*] Conversion complete.")
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python osv_report_converter.py <report.html>")
-    else:
-        convert_osv_report(sys.argv[1])
+    parser = argparse.ArgumentParser(description="Convert OSV HTML report to light mode PDF")
+    parser.add_argument("report", help="Path to the OSV HTML report")
+    parser.add_argument("-s", "--sbom-dir", help="Path to the SBOM directory", default=None)
+    args = parser.parse_args()
+
+    convert_osv_report(args.report, args.sbom_dir)

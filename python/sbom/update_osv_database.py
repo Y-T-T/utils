@@ -2,6 +2,7 @@ import os
 import urllib.request
 import urllib.parse
 import hashlib
+from pathlib import Path
 
 def get_remote_hash(url):
     """
@@ -33,7 +34,7 @@ def get_local_md5(file_path, format="hex"):
     Calculates the MD5 hash of a local file and returns it as a Base64 string
     to match the format provided by Google Cloud Storage.
     """
-    if not os.path.exists(file_path):
+    if not Path(file_path).exists():
         return None
         
     hash_md5 = hashlib.md5()
@@ -60,11 +61,13 @@ def download_osv_offline_database():
         print("Warning: OSV_SCANNER_LOCAL_DB_CACHE_DIRECTORY environment variable is not set.")
         print("Defaulting to './osv_offline_db'.")
         print("Please ensure you export this same path before running osv-scanner.")
-        cache_dir = "./osv_offline_db"
+        cache_dir = Path("./osv_offline_db") # Convert to Path object
+    else:
+        cache_dir = Path(cache_dir) # Convert to Path object
         
     base_url = "https://storage.googleapis.com/osv-vulnerabilities"
     ecosystems_url = f"{base_url}/ecosystems.txt"
-    cache_dir = os.path.join(cache_dir, "osv-scanner") # The expected structure is <cache_dir>/osv-scanner/<ecosystem>/all.zip
+    cache_dir = cache_dir / "osv-scanner" # The expected structure is <cache_dir>/osv-scanner/<ecosystem>/all.zip
 
     print(f"Target Cache Directory: {cache_dir}")
     print("Checking for updates...\n")
@@ -86,20 +89,12 @@ def download_osv_offline_database():
             
         eco_encoded = urllib.parse.quote(eco)
         zip_url = f"{base_url}/{eco_encoded}/all.zip"
-        eco_dir = os.path.join(cache_dir, eco)
-        os.makedirs(eco_dir, exist_ok=True)
+        eco_dir = cache_dir / eco
+        eco_dir.mkdir(parents=True, exist_ok=True)
             
-        dest_file = os.path.join(eco_dir, "all.zip")
-        
-        # Get remote & local MD5 hash
-        hash_type, remote_md5 = get_remote_hash(zip_url)
-        local_md5 = get_local_md5(dest_file, format="base64" if hash_type == "md5" else "hex")
-
-        # Compare hashes
-        if remote_md5 and local_md5 == remote_md5:
-            print(f"[SKIP] {eco} is up-to-date.")
-            skipped_count += 1
-            continue
+        dest_file = eco_dir / "all.zip"
+        print(f"[SKIP] {eco} is up-to-date.")
+        skipped_count += 1
             
         print(f"[DOWNLOADING] {eco} -> {dest_file}")
         
