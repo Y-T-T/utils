@@ -93,7 +93,7 @@ def convert_osv_report(input_path, sbom_dir=None):
             print-color-adjust: exact !important;
         }
 
-        i.material-icons {
+        .material-icons {
             font-family: 'Material Icons' !important;
         }
 
@@ -189,6 +189,7 @@ def convert_osv_report(input_path, sbom_dir=None):
         }
     """
     light_mode_style_b_html = """
+        .passed { display: block !important; }
     </style>
     """
 
@@ -197,6 +198,89 @@ def convert_osv_report(input_path, sbom_dir=None):
         .hide-block { display: block !important; }
     </style>
     """
+
+    # Update header to include last updated timestamp and remove feedback link
+    header_right = soup.find(id="header-right")
+    if header_right:
+        header_right.clear() # Clear existing feedback link instead of decomposing
+        
+        # Get current execution time
+        sync_time = get_osv_db_mtime() + " (UTC+8)" or "Unknown (Offline)"
+        
+        # Create a professional timestamp element
+        timestamp_tag = soup.new_tag("div", attrs={
+            "style": "text-align: right; font-size: 10pt; color: #5f6368; font-weight: 400;"
+        })
+        timestamp_tag.string = f"OSV Database Last Updated: {sync_time}"
+        header_right.append(timestamp_tag)
+
+    # Find the "Passed (No Known Vulnerabilities)" section and inject SBOM sources if provided
+    if sbom_dir:
+        try:
+            src = Path(sbom_dir)
+
+            existing_sources = {
+                Path(span.get_text(strip=True).replace("sbom:", "")).resolve() 
+                for span in soup.find_all("span", class_="source-path")
+            }
+
+            sbom_patterns = [
+                "*.spdx.json", "*.spdx", "*.spdx.yml", "*.spdx.rdf", "*.spdx.rdf.xml", # SPDX
+                "bom.json", "*.cdx.json", "bom.xml", "*.cdx.xml"                       # CycloneDX
+            ]
+
+            vuln_tab = soup.find(id="vuln-tab")
+            if not vuln_tab:
+                new_vuln_tab = soup.new_tag("div", id="vuln-tab", attrs={"class": "view-tab"})
+                global_tab = soup.find(id="summary-tab")
+                if global_tab:
+                    global_tab.append(new_vuln_tab)
+                elif soup.body:
+                    soup.body.append(new_vuln_tab)
+                vuln_tab = new_vuln_tab
+
+            if vuln_tab:
+                passed_container = None
+                sources_wrapper = None
+                processed_files = set()
+
+                for pattern in sbom_patterns:
+                    for sbom_file in src.glob(pattern):
+                        abs_sbom = sbom_file.resolve()
+                        
+                        if abs_sbom not in existing_sources and abs_sbom not in processed_files:
+                            processed_files.add(abs_sbom)
+
+                            if passed_container is None:
+                                passed_container = soup.new_tag("div", attrs={"class": "ecosystem-container project-type passed"})
+                                h2 = soup.new_tag("h2", attrs={"class": "ecosystem-heading"})
+                                h2.string = "Passed (No Known Vulnerabilities)"
+                                passed_container.append(h2)
+                                sources_wrapper = soup.new_tag("div", attrs={"class": "ecosystem-sources-container"})
+                                passed_container.append(sources_wrapper)
+
+                            source_div = soup.new_tag("div", attrs={"class": "source-container passed"})
+                            h3 = soup.new_tag("h3", attrs={"class": "source-heading"})
+                            h3.string = "Source: "
+                            span = soup.new_tag("span", attrs={"class": "source-path"})
+                            span.string = f"sbom:{abs_sbom.as_posix()}"
+                            h3.append(span)
+                            
+                            p_tag = soup.new_tag("p")
+                            p_tag.string = "經 OSV 資料庫比對，未偵測到已知弱點 (No known vulnerabilities detected)"
+                            
+                            source_div.append(h3)
+                            source_div.append(p_tag)
+                            sources_wrapper.append(source_div)
+
+                if passed_container:
+                    vuln_tab.append(passed_container)
+                    print(f"[*] Found and injected {len(processed_files)} safe sources.")
+                else:
+                    print("[*] No additional safe sources found. Skipping injection.")
+                    
+        except Exception as e:
+            print(f"[!] Error processing SBOM directory: {e}")
 
     html_soup = deepcopy(soup)
     html_inject = light_mode_font_injection + light_mode_style_f + light_mode_style_b_html
@@ -241,21 +325,6 @@ def convert_osv_report(input_path, sbom_dir=None):
     # Ensure package details sections are fully expanded
     pkg_details = soup.find_all("div", class_="package-details")
     [details.__setitem__('class', 'package-details') for details in pkg_details]
-
-    # Update header to include last updated timestamp and remove feedback link
-    header_right = soup.find(id="header-right")
-    if header_right:
-        header_right.clear() # Clear existing feedback link instead of decomposing
-        
-        # Get current execution time
-        sync_time = get_osv_db_mtime() + " (UTC+8)" or "Unknown (Offline)"
-        
-        # Create a professional timestamp element
-        timestamp_tag = soup.new_tag("div", attrs={
-            "style": "text-align: right; font-size: 10pt; color: #5f6368; font-weight: 400;"
-        })
-        timestamp_tag.string = f"OSV Database Last Updated: {sync_time}"
-        header_right.append(timestamp_tag)
     
     # Remove search box, and filter section for cleaner PDF output
     filter_section = soup.find(id="filter-section")
@@ -265,74 +334,6 @@ def convert_osv_report(input_path, sbom_dir=None):
     search_box = soup.find("div", class_="search-box")
     if search_box:
         search_box.decompose()
-
-    # Find the "Passed (No Known Vulnerabilities)" section and inject SBOM sources if provided
-    if sbom_dir:
-        try:
-            src = Path(sbom_dir)
-
-            existing_sources = {
-                Path(span.get_text(strip=True).replace("sbom:", "")).resolve() 
-                for span in soup.find_all("span", class_="source-path")
-            }
-
-            sbom_patterns = [
-                "*.spdx.json", "*.spdx", "*.spdx.yml", "*.spdx.rdf", "*.spdx.rdf.xml", # SPDX
-                "bom.json", "*.cdx.json", "bom.xml", "*.cdx.xml"                       # CycloneDX
-            ]
-
-            vuln_tab = soup.find(id="vuln-tab")
-            if not vuln_tab:
-                new_vuln_tab = soup.new_tag("div", id="vuln-tab", attrs={"class": "view-tab"})
-                global_tab = soup.find(id="summary-tab")
-                if global_tab:
-                    global_tab.append(new_vuln_tab)
-                elif soup.body:
-                    soup.body.append(new_vuln_tab)
-                vuln_tab = new_vuln_tab
-
-            if vuln_tab:
-                passed_container = None
-                sources_wrapper = None
-                processed_files = set()
-
-                for pattern in sbom_patterns:
-                    for sbom_file in src.glob(pattern):
-                        abs_sbom = sbom_file.resolve()
-                        
-                        if abs_sbom not in existing_sources and abs_sbom not in processed_files:
-                            processed_files.add(abs_sbom)
-
-                            if passed_container is None:
-                                passed_container = soup.new_tag("div", attrs={"class": "ecosystem-container project-type"})
-                                h2 = soup.new_tag("h2", attrs={"class": "ecosystem-heading"})
-                                h2.string = "Passed (No Known Vulnerabilities)"
-                                passed_container.append(h2)
-                                sources_wrapper = soup.new_tag("div", attrs={"class": "ecosystem-sources-container"})
-                                passed_container.append(sources_wrapper)
-
-                            source_div = soup.new_tag("div", attrs={"class": "source-container"})
-                            h3 = soup.new_tag("h3", attrs={"class": "source-heading"})
-                            h3.string = "Source: "
-                            span = soup.new_tag("span", attrs={"class": "source-path"})
-                            span.string = f"sbom:{abs_sbom.as_posix()}"
-                            h3.append(span)
-                            
-                            p_tag = soup.new_tag("p")
-                            p_tag.string = "經 OSV 資料庫比對，未偵測到已知弱點 (No known vulnerabilities detected)"
-                            
-                            source_div.append(h3)
-                            source_div.append(p_tag)
-                            sources_wrapper.append(source_div)
-
-                if passed_container:
-                    vuln_tab.append(passed_container)
-                    print(f"[*] Found and injected {len(processed_files)} safe sources.")
-                else:
-                    print("[*] No additional safe sources found. Skipping injection.")
-                    
-        except Exception as e:
-            print(f"[!] Error processing SBOM directory: {e}")
                 
     # Replace logo image reference
     pdf_content = str(soup).replace("osv-scanner-OSV-logo-darkmode.png", "osv-scanner-OSV-logo-lightmode.png")
@@ -342,7 +343,7 @@ def convert_osv_report(input_path, sbom_dir=None):
     base_name = input_path.name
     p = Path(input_path)
     prefix = p.parent.name if p.parent.name else p.stem
-    html_output = dir_name / f"light_{base_name}"
+    html_output = dir_name / f"{prefix}_SBOM_Report_{datetime.now().strftime("%m%d")}.html"
     tmp_output = dir_name / f"tmp_{base_name}"
     pdf_output = dir_name / f"{prefix}_SBOM_Report_{datetime.now().strftime("%m%d")}.pdf"
     
