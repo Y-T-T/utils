@@ -65,14 +65,18 @@ def get_osv_db_mtime():
     # Format the timestamp into a human-readable format
     return datetime.fromtimestamp(latest_mtime).strftime("%Y-%m-%d %H:%M")
 
-def convert_osv_report(input_path, sbom_dir=None):
+def convert_osv_report(input_path, sbom_dir=None, generate_pdf=False):
     input_path = Path(input_path) # Convert input_path to a Path object
     if not input_path.exists():
         print(f"[-] Cannot find file: {input_path}")
         return
 
-    with open(input_path, 'r', encoding='utf-8') as f:
-        soup = BeautifulSoup(f, 'html.parser')
+    try:
+        with open(input_path, 'r', encoding='utf-8') as f:
+            soup = BeautifulSoup(f, 'html.parser')
+    except Exception as e:
+        print(f"[-] Failed to read or parse the HTML file: {e}")
+        return
 
     # Injecting Google Fonts via <link> is more reliable for headless PDF generation than @import
     light_mode_font_injection = """
@@ -187,6 +191,7 @@ def convert_osv_report(input_path, sbom_dir=None):
             }
             tr { page-break-inside: avoid !important; }
         }
+
     """
     light_mode_style_b_html = """
         .passed { display: block !important; }
@@ -194,7 +199,6 @@ def convert_osv_report(input_path, sbom_dir=None):
     """
 
     light_mode_style_b_pdf = """
-
         .hide-block { display: block !important; }
     </style>
     """
@@ -301,74 +305,78 @@ def convert_osv_report(input_path, sbom_dir=None):
 
     html_content = str(html_soup).replace("osv-scanner-OSV-logo-darkmode.png", "osv-scanner-OSV-logo-lightmode.png")
 
-    # Convert tooltip content from HTML-escaped to actual HTML elements
-    tooltips = soup.find_all("div", class_="tooltip")
-    for div in tooltips:
-        classes = div.get('class', [])
-        if len(classes) != 1 or classes[0] != 'tooltip':
-            continue
-        
-        td = div.parent
-        tr = td.parent if td else None
-
-        if td and td.name == 'td' and tr and tr.name == 'tr' and tr.has_attr('data-vuln-id'):
-            span = div.find("span", class_="tooltiptext")
-            if span:
-                content = span.decode_contents()
-                div.clear()
-                div.append(BeautifulSoup(content, 'html.parser'))
-    
-    # Update arrow icons to use "expanded" class
-    arrow_icon = soup.find_all("i", class_="material-icons")
-    [icon.__setitem__('class', 'material-icons expanded') for icon in arrow_icon]
-
-    # Ensure package details sections are fully expanded
-    pkg_details = soup.find_all("div", class_="package-details")
-    [details.__setitem__('class', 'package-details') for details in pkg_details]
-    
-    # Remove search box, and filter section for cleaner PDF output
-    filter_section = soup.find(id="filter-section")
-    if filter_section:
-        filter_section.decompose()
-
-    search_box = soup.find("div", class_="search-box")
-    if search_box:
-        search_box.decompose()
-                
-    # Replace logo image reference
-    pdf_content = str(soup).replace("osv-scanner-OSV-logo-darkmode.png", "osv-scanner-OSV-logo-lightmode.png")
-
     # Save the modified content to a new file
     dir_name = input_path.parent
     base_name = input_path.name
     p = Path(input_path)
     prefix = p.parent.name if p.parent.name else p.stem
     html_output = dir_name / f"{prefix}_SBOM_Report_{datetime.now().strftime("%m%d")}.html"
-    tmp_output = dir_name / f"tmp_{base_name}"
-    pdf_output = dir_name / f"{prefix}_SBOM_Report_{datetime.now().strftime("%m%d")}.pdf"
     
     print(f"[*] Saving modified HTML report to: {html_output}")
     with open(html_output, 'w', encoding='utf-8') as f:
         f.write(html_content)
 
-    print("[*] Generating PDF from modified HTML report...")
-    with open(tmp_output, 'w', encoding='utf-8') as f:
-        f.write(pdf_content)
+    if generate_pdf:
+        # Convert tooltip content from HTML-escaped to actual HTML elements
+        tooltips = soup.find_all("div", class_="tooltip")
+        for div in tooltips:
+            classes = div.get('class', [])
+            if len(classes) != 1 or classes[0] != 'tooltip':
+                continue
+            
+            td = div.parent
+            tr = td.parent if td else None
 
-    asyncio.run(html_to_pdf(tmp_output, pdf_output))
-    
-    # Clean up the temporary HTML file used for PDF generation
-    print(f"[*] Cleaning up temporary file...")
-    if tmp_output.exists():
-        tmp_output.unlink()
+            if td and td.name == 'td' and tr and tr.name == 'tr' and tr.has_attr('data-vuln-id'):
+                span = div.find("span", class_="tooltiptext")
+                if span:
+                    content = span.decode_contents()
+                    div.clear()
+                    div.append(BeautifulSoup(content, 'html.parser'))
+        
+        # Update arrow icons to use "expanded" class
+        arrow_icon = soup.find_all("i", class_="material-icons")
+        [icon.__setitem__('class', 'material-icons expanded') for icon in arrow_icon]
 
-    print(f"[*] PDF report generated at: {pdf_output}")
+        # Ensure package details sections are fully expanded
+        pkg_details = soup.find_all("div", class_="package-details")
+        [details.__setitem__('class', 'package-details') for details in pkg_details]
+        
+        # Remove search box, and filter section for cleaner PDF output
+        filter_section = soup.find(id="filter-section")
+        if filter_section:
+            filter_section.decompose()
+
+        search_box = soup.find("div", class_="search-box")
+        if search_box:
+            search_box.decompose()
+                    
+        # Replace logo image reference
+        pdf_content = str(soup).replace("osv-scanner-OSV-logo-darkmode.png", "osv-scanner-OSV-logo-lightmode.png")
+
+        tmp_output = dir_name / f"tmp_{base_name}"
+        pdf_output = dir_name / f"{prefix}_SBOM_Report_{datetime.now().strftime("%m%d")}.pdf"
+
+        print("[*] Generating PDF from modified HTML report...")
+        with open(tmp_output, 'w', encoding='utf-8') as f:
+            f.write(pdf_content)
+
+        asyncio.run(html_to_pdf(tmp_output, pdf_output))
+        
+        # Clean up the temporary HTML file used for PDF generation
+        print(f"[*] Cleaning up temporary file...")
+        if tmp_output.exists():
+            tmp_output.unlink()
+
+        print(f"[*] PDF report generated at: {pdf_output}")
+        
     print("[*] Conversion complete.")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Convert OSV HTML report to light mode PDF")
+    parser = argparse.ArgumentParser(description="Convert OSV HTML report to light mode HTML or PDF")
     parser.add_argument("report", help="Path to the OSV HTML report")
-    parser.add_argument("-s", "--sbom-dir", help="Path to the SBOM directory", default=None)
+    parser.add_argument("-r", "--sbom-dir", help="Path to the SBOM directory", default=None)
+    parser.add_argument("--pdf", action="store_true", help="Generate PDF instead of HTML (default: False)")
     args = parser.parse_args()
 
-    convert_osv_report(args.report, args.sbom_dir)
+    convert_osv_report(args.report, args.sbom_dir, args.pdf)

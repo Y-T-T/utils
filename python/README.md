@@ -30,7 +30,7 @@ Tools for downloading offline OSV vulnerability databases.
 | Script | Description | Usage |
 | :--- | :--- | :--- |
 | `update_osv_database.py` | Downloads the latest OSV offline vulnerability database to the path specified by `OSV_SCANNER_LOCAL_DB_CACHE_DIRECTORY` (defaults to `osv_offline_db`). | `python update_osv_database.py` |
-| `osv_report_converter.py` | Converts OSV HTML reports into a cleaner format suitable for PDF conversion, adding timestamps and removing unnecessary elements. | `python osv_report_converter.py <input_report.html> -s <sbom_source_dir>` |
+| `osv_report_converter.py` | Converts OSV HTML reports into a cleaner format suitable for PDF conversion, adding timestamps and removing unnecessary elements. | `python osv_report_converter.py <input_report.html> -r <sbom_source_dir> --pdf` |
 
 ## Node-RED (`/node-RED`)
 
