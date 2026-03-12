@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import argparse
 
 # Configuration
 DEFAULT_INPUT_FILE = 'flows.json'
@@ -93,9 +94,30 @@ def extract_code(file_path):
     print(f"    - Total Files Extracted:     {count_js + count_tpl}")
     print(f"[+] Files are saved in: ./{OUTPUT_DIR}/")
 
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Extract Node-RED function/template code from flows JSON"
+    )
+    parser.add_argument(
+        "input_file",
+        nargs="?",
+        default=DEFAULT_INPUT_FILE,
+        help=f"Path to Node-RED flows JSON file (default: {DEFAULT_INPUT_FILE})"
+    )
+    return parser.parse_args()
+
+
+def validate_input_file(file_path):
+    if not os.path.isfile(file_path):
+        print(f"[Error] File not found: {file_path}")
+        sys.exit(1)
+
 if __name__ == "__main__":
-    # Simple CLI argument to specify file, defaults to flows.json
-    target_file = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_INPUT_FILE
-    
+    args = parse_args()
+    target_file = args.input_file
+
+    # Validate input file first, then continue with setup/extraction.
+    validate_input_file(target_file)
     setup_output_dir(OUTPUT_DIR)
     extract_code(target_file)
