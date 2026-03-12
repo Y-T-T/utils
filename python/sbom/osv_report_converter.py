@@ -249,7 +249,7 @@ def convert_osv_report(input_path, sbom_dir=None, generate_pdf=False):
                 processed_files = set()
 
                 for pattern in sbom_patterns:
-                    for sbom_file in src.glob(pattern):
+                    for sbom_file in src.rglob(pattern):
                         abs_sbom = sbom_file.resolve()
                         
                         if abs_sbom not in existing_sources and abs_sbom not in processed_files:
@@ -369,7 +369,7 @@ def convert_osv_report(input_path, sbom_dir=None, generate_pdf=False):
             tmp_output.unlink()
 
         print(f"[*] PDF report generated at: {pdf_output}")
-        
+
     print("[*] Conversion complete.")
 
 if __name__ == "__main__":
