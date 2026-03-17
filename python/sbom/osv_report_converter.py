@@ -194,6 +194,7 @@ def convert_osv_report(input_path, sbom_dir=None, generate_pdf=False):
 
     """
     light_mode_style_b_html = """
+        .summary-section { border: 1px solid #cccccc !important; }
         .passed { display: block !important; }
     </style>
     """
