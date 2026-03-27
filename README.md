@@ -6,10 +6,13 @@ A collection of utility scripts, primarily for automation or security tasks.
 
 ## Structure
 
-This repository is organized by languages/categories:
+This repository is organized by purpose and domain:
 
-* `/python`: Cross-platform Python scripts.
-* `/shell`: Bash/Zsh scripts for Linux / macOS environments.
+* **`/ai-agents`**: AI agent tools and utilities.
+* **`/automation`**: System automation and workflow extractors.
+* **`/env-setup`**: Development environment setup scripts.
+* **`/sbom`**: Software Bill of Materials (SBOM) and vulnerability scanning tools.
+* **`/security`**: Security, penetration testing, and security-related tools.
 
 ---
 
@@ -21,16 +24,16 @@ This repository is organized by languages/categories:
     cd utils
     ```
 
-2.  Navigate to the directory of interest (`python/`, `shell/`, etc.).
+2.  Navigate to the directory of interest (`security/`, `env-setup/`, etc.).
 
-3.  (Recommended) Always review the script's source code before executing it.
+3.  Always review the script's source code before executing it.
 
 4.  (Shell/PS) Grant execution permissions if necessary:
     ```bash
     # Linux/macOS
-    chmod +x shell/script_name.sh
+    chmod +x env-setup/script_name.sh
 
-    # Windows (You may need to set the execution policy)
+    # Windows (You may need to bypass the execution policy for PowerShell scripts)
     Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
     ```
 
