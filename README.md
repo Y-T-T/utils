@@ -8,7 +8,6 @@ A collection of utility scripts, primarily for automation or security tasks.
 
 This repository is organized by purpose and domain:
 
-* **`/ai-agents`**: AI agent tools and utilities.
 * **`/automation`**: System automation and workflow extractors.
 * **`/env-setup`**: Development environment setup scripts.
 * **`/sbom`**: Software Bill of Materials (SBOM) and vulnerability scanning tools.
